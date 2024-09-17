@@ -79,7 +79,6 @@ router.post('/api/highlights', upload.single('highlightImg'), async (req, res) =
     });
 
     await news.save();
-
     res.status(200).json({ message: 'Highlight saved successfully', news });
   } catch (error) {
     console.error('Error saving highlight:', error);
