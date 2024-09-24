@@ -1,50 +1,3 @@
-// const express = require("express");
-// const News = require("../models/news");
-
-// const router = express.Router();
-
-// router.post("/addNews", async (req, res) => {
-//   try {
-//     const { highlights, news } = req.body;
-//     const newNews = new News({
-//       highlights: highlights,   
-//       news: news,
-//     });
-//     console.log(newNews);
-//     await newNews.save();
-//     res.status(201).json({
-//       sucessful: true,
-//       message: "news added",
-//       newNews
-//     });
-//   } catch (err) {
-//     res.status(500).json({
-//       sucessful: false,
-//       message: "unable to add news",
-//       erormessage: err,
-//     });
-//   }
-// });
-// router.get("/getNews", async (req, res) => {
-//   try {
-//     const data = await News.findOne();
-//     console.log(data);
-//     res.status(201).json(data);
-//   } catch (err) {
-//     res.status(500).json({
-//       success: false,
-//       message: "News not avilable",
-//       error: err,
-//     });
-//   }
-// });
-
-
-// module.exports = router;
-
-
-
-
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -64,6 +17,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage }); 
 
+// Serve static files from the 'uploads' directory
+router.use('/news/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
 // Route to handle highlight submission
 router.post('/api/highlights', upload.single('highlightImg'), async (req, res) => {
   try {
@@ -76,6 +32,7 @@ router.post('/api/highlights', upload.single('highlightImg'), async (req, res) =
         img: highlightImg,
         title: highlightTitle,
       },
+      news : []
     });
 
     await news.save();
@@ -86,4 +43,95 @@ router.post('/api/highlights', upload.single('highlightImg'), async (req, res) =
   }
 });
 
-module.exports = router
+// New route to get the image and title of highlights
+router.get('/api/highlights', async (req, res) => {
+  try {
+    const latestNews = await News.findOne().sort({ createdAt: -1 });
+    
+    if (!latestNews || !latestNews.highlights) {
+      return res.status(404).json({ message: 'No highlights found' });
+    }
+
+    const { img, title } = latestNews.highlights;
+    res.status(200).json({ img, title });
+  } catch (error) {
+    console.error('Error fetching highlights:', error);
+    res.status(500).json({ message: 'Failed to fetch highlights', error });
+  }
+});
+
+// New route to update the existing news item
+router.put('/api/news', upload.single('img'), async (req, res) => {
+  try {
+    // console.log("Received request body:", req.body);
+    // console.log("Received file:", req.file);
+
+    const { title, description } = req.body;
+    let imgPath = null;
+
+    if (req.file) {
+      imgPath = req.file.path;
+    }
+
+    const updateData = {
+      'news.0.title': title,
+      'news.0.description': description,
+      'news.0.date': new Date()
+    };
+
+    if (imgPath) {
+      updateData['news.0.img'] = imgPath;
+    }
+
+    const updatedNews = await News.findOneAndUpdate(
+      {}, // Match all documents
+      {
+        $push: {
+          news: {
+            $each: [{
+              img: updateData['news.0.img'],
+              title: updateData['news.0.title'],
+              date: updateData['news.0.date'],
+              description: updateData['news.0.description']
+            }],
+            $position: 0
+          }
+        }
+      },
+      { new: true, upsert: true }
+    );
+
+    if (!updatedNews || !updatedNews.news || updatedNews.news.length === 0) {
+      return res.status(404).json({ message: 'Failed to update news item' });
+    }
+
+    res.status(200).json({ message: 'News item updated successfully', updatedNews });
+  } catch (error) {
+    console.error('Error updating news item:', error);
+    res.status(500).json({ message: 'Failed to update news item', error: error.message });
+  }
+});
+
+// New route to get the news array
+router.get('/api/news', async (req, res) => {
+  try {
+    const latestNews = await News.findOne().sort({ createdAt: -1 });
+    
+    if (!latestNews || !latestNews.news) {
+      return res.status(404).json({ message: 'No news found' });
+    }
+
+    // Modify the image paths in the news array
+    const modifiedNews = latestNews.news.map(item => ({
+      ...item,
+      img: item.img ? `/news/uploads/${path.basename(item.img)}` : null
+    }));
+
+    res.status(200).json({ news: modifiedNews });
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    res.status(500).json({ message: 'Failed to fetch news', error: error.message });
+  }
+});
+
+module.exports = router;

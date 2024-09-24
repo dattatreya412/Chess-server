@@ -16,6 +16,8 @@ router.post("/", async (req, res) => {
       country,
       bio,
       playerNotes,
+      boardTheme,
+      iconTheme,
     } = req.body;
     const newUser = new User({
       username,
@@ -26,6 +28,8 @@ router.post("/", async (req, res) => {
       country,
       bio,
       playerNotes,
+      boardTheme,
+      iconTheme
     });
     await newUser.save();
 
@@ -73,11 +77,32 @@ router.get("/getusername/:objectId", async (req, res) => {
 router.get("/:username", async (req, res) => {
   const { username } = req.params;
   try {
-    const data = await User.findOne({ username });
+    const data = await User.findOne({ username }).populate({
+      path: 'playedGames',
+      populate: [
+        { path: 'whitePlayerId', model: 'User', select: 'username' },
+        { path: 'blackPlayerId', model: 'User', select: 'username' }
+      ]
+    });
+
+    // Iterate through playedGames and populate whitePlayerId and blackPlayerId
+    const populatedPlayedGames = await Promise.all(data.playedGames.map(async (game) => {
+      const whitePlayer = await User.findById(game.whitePlayerId, 'username');
+      const blackPlayer = await User.findById(game.blackPlayerId, 'username');
+      return {
+        ...game.toObject(),
+        whitePlayerId: whitePlayer ? whitePlayer.username : null,
+        blackPlayerId: blackPlayer ? blackPlayer.username : null,
+      };
+    }));
+
     res.status(201).json({
       success: true,
-      message : 'found user with similar username.',
-      data,
+      message: 'found user with similar username.',
+      data: {
+        ...data.toObject(),
+        playedGames: populatedPlayedGames,
+      },
     });
   } catch (err) {
     res.status(500).json({
@@ -186,5 +211,87 @@ router.get('/findAll/user', async (req, res) => {
     });
   }
 });
+
+
+// Route to update board theme
+router.put('/:userId/boardTheme', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { boardTheme } = req.body;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { boardTheme },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Board theme updated successfully",
+      boardTheme: updatedUser.boardTheme,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Unable to update board theme",
+      error: err.message,
+    });
+  }
+});
+
+// Route to update icon theme
+router.put('/:userId/iconTheme', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { iconTheme } = req.body;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { iconTheme },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Icon theme updated successfully",
+      iconTheme: updatedUser.iconTheme,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Unable to update icon theme",
+      error: err.message,
+    });
+  }
+});
+
 
 module.exports = router;

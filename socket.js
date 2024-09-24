@@ -68,7 +68,7 @@ module.exports = (io) => {
       await User.findByIdAndUpdate(objectId, {
         isPlaying: true,
         gameID: roomName,
-      }, { new: true });
+      }, { new: true }); 
 
       if (rooms[roomName].players.length < 2) {
         rooms[roomName].players.push(uniqueSocket.id);

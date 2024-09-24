@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema({
   bio: String,  
   isLive: { type: Boolean, default: false },
   isPlaying : {type : Boolean, default : false},
+
+  boardTheme: { type: String, default: 'default' },
+  iconTheme: { type: String, default: 'default' },
+  
   gameID : {type : String},
   playedGames: [{ type: mongoose.Schema.Types.ObjectId, ref: "GameArchive" }],
   playerMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],

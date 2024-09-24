@@ -5,7 +5,8 @@ const messageSchema = new mongoose.Schema({
     sentTo : String, 
     message: String,
     noticed : {type : Boolean , default : false},
-    viewed : {type : Boolean , default : false}
+    viewed : {type : Boolean , default : false},
+    date : {type : Date , default : Date.now}
 });
 
 module.exports = mongoose.model("Message", messageSchema);

@@ -7,10 +7,11 @@ const puzzleSchema = new mongoose.Schema({
       correctMoves: [
         {
           from: String,
-          to: String,
+          to: String, 
           promotion: String,
         },
-      ],
+      ], 
+      turn: String,
       rating: Number,
     },
   ],
